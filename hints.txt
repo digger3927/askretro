@@ -27,3 +27,18 @@ When Calculating total bases, use this calculation:
 sum(b_h) + sum(b_d)*2 + sum(b_t)*3 + sum(b_hr)*4
 
 
+--- NEW HINTS ---
+
+- **Default to Regular Season:** Unless the user explicitly asks for "playoffs", "postseason", or a specific event like the "All-Star Game", assume all questions are about the **regular season**. Always include `WHERE gametype = 'regular'` in your queries.
+
+- **Correct Pitcher Stats:** To calculate stats for pitchers (like home runs allowed), you must use the `plays` table. Do NOT use the `pitching` table for these counts.
+  - **Example (Home runs allowed by a pitcher):**
+    `SELECT p.pitcher, ap.first, ap.last, count(p.hr) as hr_allowed FROM plays p JOIN allplayers ap ON p.pitcher = ap.id WHERE p.hr = 1 AND p.pitcher = '[pitcher_id]' GROUP BY p.pitcher;`
+
+- **Handling Players on Multiple Teams:** When a player plays for multiple teams in one season, the `allplayers` table has a separate entry for each team. To get a player's total stats for a season, you must sum the stats from each team they played for. The join between your stats table (e.g., `batting`) and `allplayers` must be correct.
+  - **Good Query (avoids duplicates):**
+    `SELECT ap.first, ap.last, sum(b.b_hr) as total_hr FROM batting b JOIN allplayers ap ON b.id = ap.id AND b.team = ap.team AND b.date BETWEEN ap.first_g AND ap.last_g WHERE ap.first = 'Manny' AND ap.last = 'Ramirez' AND ap.season = 2008 AND b.gametype = 'regular' GROUP BY ap.first, ap.last;`
+
+- **Team-Based Questions:** For questions about a team's performance over a season (like total wins or losses), use the `gameinfo` table.
+  - **Example (Most wins in a season):**
+    `SELECT wteam, count(*) as wins FROM gameinfo WHERE season = 2018 AND gametype = 'regular' GROUP BY wteam ORDER BY wins DESC LIMIT 1;`

@@ -2,6 +2,8 @@ import sqlite3
 import sys
 import os
 from openai import OpenAI
+from rich.console import Console
+from rich.table import Table
 
 def get_api_key(filepath="OPEN_API_KEY.txt"):
     """
@@ -124,10 +126,11 @@ def execute_query(sql_query):
         cursor.execute(sql_query)
             
         results = cursor.fetchall()
-        return results
+        columns = [description[0] for description in cursor.description]
+        return results, columns
     except sqlite3.Error as e:
         print(f"Database error: {e}")
-        return None
+        return None, None
     finally:
         if conn:
             conn.close()
@@ -140,12 +143,18 @@ if __name__ == '__main__':
         sql_query = generate_sql_with_llm(user_question)
         
         if sql_query:
-            results = execute_query(sql_query)
+            results, columns = execute_query(sql_query)
             
             if results:
-                print("Query Results:")
+                table = Table(title="Query Results")
+                for column in columns:
+                    table.add_column(column, justify="right", style="cyan", no_wrap=True)
+                
                 for row in results:
-                    print(row)
+                    table.add_row(*[str(item) for item in row])
+                
+                console = Console()
+                console.print(table)
             else:
                 print("No results found for that query.")
     else:

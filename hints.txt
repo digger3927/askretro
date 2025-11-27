@@ -1,0 +1,29 @@
+do not try to make the playerid yourself.  Always join to the "allplayers" table to get the correct id.
+do not use the "pitching' table when trying to determine counts such as the number of homeruns or hits allowed by pitchers
+when using the "batting" table and trying to pull data for specific time ranges, use the "date" column.  It is formatted as "YYYYMMDD".  So when looking for a specific year, use the first four digits of this column.
+
+
+
+
+below is an example of a query to use when counting batting statistics
+select b.id, ap.first, ap.last, sum(b.b_hr) as HR from batting b inner join allplayers ap on ap.id = b.id and b.gametype = "regular" and ap.season = 2024 and b.date between ap.first_g and ap.last_g group by b.id order by HR desc limit 1;
+
+
+when looking for matchups between batters and pitchers, like "who hit the most homeruns against Clayton Kershaw" use a query similar to the following:
+select ap.first, ap.last, sum(p.hr) as hr from plays p join allplayers ap on ap.id = p.batter and ap.season = substr(p.date,1,4) and ap.team = p.batteam  where pitcher = 'kersc001' and hr = 1 group by ap.first, ap.last order by hr desc limit 5;
+
+a player can have multiple entries in allplayers if they play for more than one team in a year, or if they are an All Star.  If they are an All Star for a season they will have an entry in allplayers for the team 'NLS'.  If they played for more than one team we need to make sure the team they played for in a specific game matches the team in allplayers.  If we don't then we will get duplicates because of the join.
+
+
+
+example questions and queries:
+The following query would be for the question "
+
+Which year did Albert Pujols hit the most home runs?
+select substr(date,1,4) as Season, sum(b_hr) as hr from batting where id = (select distinct id from allplayers where first = 'Albert' and last = 'Pujols') and gametype = 'regular' group by Season order by hr desc limit 1;
+
+
+When Calculating total bases, use this calculation:
+sum(b_h) + sum(b_d)*2 + sum(b_t)*3 + sum(b_hr)*4
+
+

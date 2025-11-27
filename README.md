@@ -22,16 +22,11 @@ This project requires a SQLite database named `retrosheet.db`. You will need to 
 
 ### 2. Set up your OpenAI API Key
 
-The natural language query feature uses the OpenAI API. You need to provide an API key in one of the following ways:
+The natural language query feature uses the OpenAI API. You must provide your API key by setting the `OPENAI_API_KEY` environment variable.
 
-*   **Environment Variable (Recommended):**
-    Set the `OPENAI_API_KEY` environment variable to your OpenAI API key.
-    ```bash
-    export OPENAI_API_KEY="your-api-key-here"
-    ```
-
-*   **File:**
-    Create a file named `OPEN_API_KEY.txt` in the root of the project and paste your OpenAI API key into it.
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+```
 
 ### 3. Install Dependencies
 

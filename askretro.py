@@ -5,27 +5,15 @@ from openai import OpenAI
 from rich.console import Console
 from rich.table import Table
 
-def get_api_key(filepath="OPEN_API_KEY.txt"):
+def get_api_key():
     """
-    Retrieves the OpenAI API key from an environment variable or a local text file.
-
-    It first checks for the 'OPENAI_API_KEY' environment variable. If not found,
-    it attempts to read the key from the specified file.
+    Retrieves the OpenAI API key from the 'OPENAI_API_KEY' environment variable.
     """
     api_key = os.environ.get("OPENAI_API_KEY")
-    if api_key:
-        return api_key
-    
-    try:
-        with open(filepath, 'r') as file:
-            api_key = file.read().strip()
-            return api_key
-    except FileNotFoundError:
-        print(f"Error: The file '{filepath}' was not found and the OPENAI_API_KEY environment variable is not set.")
+    if not api_key:
+        print("Error: The 'OPENAI_API_KEY' environment variable is not set.")
         return None
-    except Exception as e:
-        print(f"An error occurred while reading the key file: {e}")
-        return None
+    return api_key
 
 def get_db_schema_from_file(filepath="column_desc.txt"):
     """

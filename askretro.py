@@ -135,28 +135,46 @@ def execute_query(sql_query):
         if conn:
             conn.close()
 
-if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        user_question = ' '.join(sys.argv[1:])
-        print(f"User question: {user_question}\n")
-
-        sql_query = generate_sql_with_llm(user_question)
+def process_question(user_question):
+    """
+    Takes a user's question, generates SQL, executes it, and prints the results.
+    """
+    print(f"User question: {user_question}\n")
+    sql_query = generate_sql_with_llm(user_question)
+    
+    if sql_query:
+        results, columns = execute_query(sql_query)
         
-        if sql_query:
-            results, columns = execute_query(sql_query)
+        if results:
+            table = Table(title="Query Results")
+            for column in columns:
+                table.add_column(column, justify="right", style="cyan", no_wrap=True)
             
-            if results:
-                table = Table(title="Query Results")
-                for column in columns:
-                    table.add_column(column, justify="right", style="cyan", no_wrap=True)
-                
-                for row in results:
-                    table.add_row(*[str(item) for item in row])
-                
-                console = Console()
-                console.print(table)
-            else:
-                print("No results found for that query.")
+            for row in results:
+                table.add_row(*[str(item) for item in row])
+            
+            console = Console()
+            console.print(table)
+        else:
+            print("No results found for that query.")
+
+def main():
+    """
+    Main function to run the script in either single-question or interactive mode.
+    """
+    if len(sys.argv) > 1:
+        # Single question mode from command-line arguments
+        user_question = ' '.join(sys.argv[1:])
+        process_question(user_question)
     else:
-        print("Please provide a question as a command-line argument.")
-        print("Example: python askretro.py \"Who hit the most home runs in 2018?\"")
+        # Interactive mode
+        print("Entering interactive mode. Type 'quit' or 'exit' to leave.")
+        while True:
+            user_question = input("askretro> ")
+            if user_question.lower() in ["quit", "exit"]:
+                break
+            if user_question:
+                process_question(user_question)
+
+if __name__ == '__main__':
+    main()

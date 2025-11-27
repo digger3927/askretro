@@ -114,9 +114,69 @@ def generate_sql_with_llm(question):
         print(f"An error occurred while calling the OpenAI API: {e}")
         return None
 
+def get_corrected_sql_with_llm(question, old_query, error_message):
+    """
+    Sends the old query and error message to an LLM to get a corrected SQL query.
+    """
+    api_key = get_api_key()
+    if not api_key:
+        return None
+
+    db_schema = get_db_schema_from_file()
+    if not db_schema:
+        return None
+
+    hints = get_hints_from_file()
+    client = OpenAI(api_key=api_key)
+
+    try:
+        correction_prompt = f"""You are a SQL expert. You generated a query that resulted in an error. Your task is to fix it.
+        Original Question: {question}
+        Faulty Query:
+        {old_query}
+        Error Message:
+        {error_message}
+
+        Based on the error, provide only the corrected, valid SQLite query.
+        """
+        full_system_prompt = f"You are a SQL expert. Your task is to generate a valid SQLite query for the given question based on the provided database schema. Only provide the SQL query and nothing else.\n\n{db_schema}\n\n{hints}"
+
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {"role": "system", "content": full_system_prompt},
+                {"role": "user", "content": correction_prompt}
+            ]
+        )
+        
+        generated_query = response.choices[0].message.content.strip()
+        print(f"LLM generated corrected query:\n{generated_query}\n")
+        
+        # Robust cleaning logic
+        if generated_query.startswith("```sql"):
+            generated_query = generated_query.strip("```sql").strip()
+        if generated_query.endswith("```"):
+            generated_query = generated_query.strip("```").strip()
+        
+        query_start = generated_query.lower().find("select")
+        if query_start != -1:
+            generated_query = generated_query[query_start:]
+        
+        # Validate the query
+        if not generated_query.lower().strip().startswith("select"):
+            print("Error: The generated query is not a SELECT statement.")
+            return None
+            
+        return generated_query
+
+    except Exception as e:
+        print(f"An error occurred while calling the OpenAI API: {e}")
+        return None
+
 def execute_query(sql_query):
     """
     Connects to the database, executes a query, and returns the results.
+    On error, it returns the error message.
     """
     conn = None
     try:
@@ -130,7 +190,7 @@ def execute_query(sql_query):
         return results, columns
     except sqlite3.Error as e:
         print(f"Database error: {e}")
-        return None, None
+        return None, str(e)
     finally:
         if conn:
             conn.close()
@@ -138,25 +198,39 @@ def execute_query(sql_query):
 def process_question(user_question):
     """
     Takes a user's question, generates SQL, executes it, and prints the results.
+    Includes a retry mechanism for failed queries.
     """
     print(f"User question: {user_question}\n")
     sql_query = generate_sql_with_llm(user_question)
     
-    if sql_query:
-        results, columns = execute_query(sql_query)
+    if not sql_query:
+        return
+
+    results, error = execute_query(sql_query)
+    
+    if error:
+        print("The first query failed. Asking the LLM for a correction...")
+        sql_query = get_corrected_sql_with_llm(user_question, sql_query, error)
+        if not sql_query:
+            return
+        results, error = execute_query(sql_query)
+
+    if error:
+        print(f"The corrected query also failed. Error: {error}")
+        return
+
+    if results:
+        table = Table(title="Query Results")
+        for column in columns:
+            table.add_column(column, justify="right", style="cyan", no_wrap=True)
         
-        if results:
-            table = Table(title="Query Results")
-            for column in columns:
-                table.add_column(column, justify="right", style="cyan", no_wrap=True)
-            
-            for row in results:
-                table.add_row(*[str(item) for item in row])
-            
-            console = Console()
-            console.print(table)
-        else:
-            print("No results found for that query.")
+        for row in results:
+            table.add_row(*[str(item) for item in row])
+        
+        console = Console()
+        console.print(table)
+    else:
+        print("No results found for that query.")
 
 def main():
     """
